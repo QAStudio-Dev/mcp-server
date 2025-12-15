@@ -14,20 +14,27 @@ This MCP server exposes QA Studio's API as MCP tools, allowing you to:
 
 ## Installation
 
-### Option 1: NPM Package (Coming Soon)
+### Option 1: NPM Package (Recommended)
+
+```bash
+npx @qastudio-dev/mcp-server
+```
+
+Or install globally:
 
 ```bash
 npm install -g @qastudio-dev/mcp-server
 ```
 
-### Option 2: From Source
+### Option 2: Local Development
+
+For local development or if the package isn't published yet:
 
 ```bash
 git clone https://github.com/QAStudio-Dev/mcp-server.git
 cd mcp-server
 npm install
 npm run build
-npm link
 ```
 
 ## Configuration
@@ -40,6 +47,8 @@ Add to your Claude Desktop configuration file:
 
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
+**For published package (after publishing to npm):**
+
 ```json
 {
   "mcpServers": {
@@ -47,13 +56,32 @@ Add to your Claude Desktop configuration file:
       "command": "npx",
       "args": ["-y", "@qastudio-dev/mcp-server"],
       "env": {
-        "QA_STUDIO_API_URL": "https://your-instance.com/api",
+        "QA_STUDIO_API_URL": "https://qastudio.dev/api",
         "QA_STUDIO_API_KEY": "your-api-key-here"
       }
     }
   }
 }
 ```
+
+**For local development (before publishing):**
+
+```json
+{
+  "mcpServers": {
+    "qastudio": {
+      "command": "node",
+      "args": ["/absolute/path/to/qastudio-mcp/dist/index.js"],
+      "env": {
+        "QA_STUDIO_API_URL": "https://qastudio.dev/api",
+        "QA_STUDIO_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+> **Note:** Replace `/absolute/path/to/qastudio-mcp` with the actual path to your local repository.
 
 ### Environment Variables
 
