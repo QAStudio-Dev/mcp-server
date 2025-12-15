@@ -243,6 +243,51 @@ The project uses strict TypeScript settings:
 - **Strict Mode**: Enabled
 - **Source Maps**: Enabled for debugging
 
+### Testing
+
+The project uses **Vitest** for unit testing with the following coverage:
+
+#### Test Suites
+
+1. **Schema Validation Tests** (`src/__tests__/schemas.test.ts`)
+   - Validates all Zod input schemas for tools
+   - Tests required and optional parameters
+   - Tests enum validations
+   - Tests complex nested objects (steps, errors, etc.)
+
+2. **API Request Tests** (`src/__tests__/api.test.ts`)
+   - Query parameter encoding
+   - URL construction for all endpoints
+   - Request body formatting
+   - Error handling and formatting
+   - Response formatting and success messages
+
+#### Running Tests
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (auto-rerun on changes)
+npm run test:watch
+
+# Run tests with interactive UI
+npm run test:ui
+```
+
+#### Test Coverage
+
+Tests cover:
+
+- ✅ All tool input schema validations
+- ✅ URL construction and query parameters
+- ✅ Request body formatting
+- ✅ Error handling
+- ✅ Response formatting
+- ✅ Edge cases (special characters, unicode, empty values)
+
+The GitHub Actions workflow automatically runs tests before publishing to ensure quality.
+
 ## API Client Implementation
 
 The `apiRequest` helper function handles all API communication:
@@ -303,32 +348,27 @@ const server = new McpServer(
 Each tool is registered using `server.registerTool()` with three parameters:
 
 1. **Tool Name**: Unique identifier for the tool
-2. **Configuration Object**: Contains `description` and `inputSchema` (JSON Schema)
-3. **Callback Function**: Handler that receives `(args, extra)` parameters
+2. **Configuration Object**: Contains `description` and `inputSchema` (Zod schema object)
+3. **Callback Function**: Handler that receives validated `args` parameter
 
 **Example:**
 
 ```typescript
+import { z } from 'zod';
+
 server.registerTool(
   'list-projects',
   {
     description: 'List all projects in QA Studio',
     inputSchema: {
-      type: 'object',
-      properties: {
-        search: {
-          type: 'string',
-          description: 'Optional search query to filter projects by name'
-        }
-      }
-    } as any
+      search: z.string().optional().describe('Optional search query to filter projects by name')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { search } = args as { search?: string };
-      const data = await apiRequest(
-        `/projects${search ? `?search=${encodeURIComponent(search)}` : ''}`
-      );
+      const { search } = args;
+      const query = search ? `?search=${encodeURIComponent(search)}` : '';
+      const data = await apiRequest(`/projects${query}`);
       return {
         content: [
           {
@@ -354,10 +394,12 @@ server.registerTool(
 
 **Key Points:**
 
-- `inputSchema as any` - Type cast needed for JSON Schema compatibility
+- `inputSchema` - Object containing Zod schema properties (not a Zod object itself)
+- Each property is a Zod schema with `.describe()` for parameter documentation
 - `type: 'text' as const` - Ensures proper TypeScript literal type
-- `args: any, _extra: any` - Callback parameters (args contains validated input)
+- `args` - Callback receives validated arguments (TypeScript infers types from Zod schema)
 - Each tool is self-contained with schema and handler together
+- The MCP SDK automatically validates inputs using the Zod schemas
 
 ## Error Handling
 
@@ -475,30 +517,31 @@ When adding new tools:
 
 1. Use `server.registerTool()` to register the new tool with its schema and handler
 2. Follow the existing pattern: tool name, config object (description + inputSchema), and async callback
-3. Include proper error handling with try-catch in the callback
-4. Use type assertions: `inputSchema as any` and `type: 'text' as const`
-5. Update the README.md with usage examples and API endpoint documentation
-6. Test the tool against a live QA Studio instance
-7. Update this CLAUDE.md file with the new tool details in the "Available Tools" section
+3. Define `inputSchema` using Zod schemas with `.describe()` for each parameter
+4. Include proper error handling with try-catch in the callback
+5. Use `type: 'text' as const` for content type
+6. Update the README.md with usage examples and API endpoint documentation
+7. Test the tool against a live QA Studio instance
+8. Update this CLAUDE.md file with the new tool details in the "Available Tools" section
 
 **Example template for new tools:**
 
 ```typescript
+import { z } from 'zod';
+
 server.registerTool(
   'tool-name',
   {
     description: 'Description of what the tool does',
     inputSchema: {
-      type: 'object',
-      properties: {
-        // Define parameters here
-      },
-      required: ['requiredParam']
-    } as any
+      requiredParam: z.string().describe('Description of required parameter'),
+      optionalParam: z.string().optional().describe('Description of optional parameter'),
+      enumParam: z.enum(['option1', 'option2']).optional().describe('Choose an option')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { param } = args as { param: string };
+      const { requiredParam, optionalParam } = args;
       const data = await apiRequest('/endpoint');
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }]

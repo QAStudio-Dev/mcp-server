@@ -5,3 +5,7 @@ dist/
 .env
 .env.local
 *.tsbuildinfo
+
+# Test coverage
+coverage/
+.vitest/

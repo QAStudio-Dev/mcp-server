@@ -12,6 +12,9 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "npm run build",
@@ -33,12 +36,15 @@
     "url": "https://github.com/QAStudio-Dev/mcp-server.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4"
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "@vitest/ui": "^4.0.15",
     "prettier": "^3.4.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.15"
   },
   "engines": {
     "node": ">=18.0.0"

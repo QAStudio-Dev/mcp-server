@@ -2,6 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 
 // API Configuration from environment
 const API_URL = process.env.QA_STUDIO_API_URL || 'http://localhost:3000/api';
@@ -51,18 +52,12 @@ server.registerTool(
   {
     description: 'List all projects in QA Studio',
     inputSchema: {
-      type: 'object',
-      properties: {
-        search: {
-          type: 'string',
-          description: 'Optional search query to filter projects by name'
-        }
-      }
-    } as any
+      search: z.string().optional().describe('Optional search query to filter projects by name')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { search } = args as { search?: string };
+      const { search } = args;
       const query = search ? `?search=${encodeURIComponent(search)}` : '';
       const data = await apiRequest(`/projects${query}`);
       return {
@@ -93,41 +88,19 @@ server.registerTool(
   {
     description: 'Create a new test run for a project',
     inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string',
-          description: 'The project ID to create the test run for'
-        },
-        name: {
-          type: 'string',
-          description: 'Name of the test run'
-        },
-        description: {
-          type: 'string',
-          description: 'Optional description of the test run'
-        },
-        environment: {
-          type: 'string',
-          description: 'Environment name (e.g., "production", "staging", "local")'
-        },
-        milestoneId: {
-          type: 'string',
-          description: 'Optional milestone ID to associate with the test run'
-        }
-      },
-      required: ['projectId', 'name', 'environment']
-    } as any
+      projectId: z.string().describe('The project ID to create the test run for'),
+      name: z.string().describe('Name of the test run'),
+      environment: z.string().describe('Environment name (e.g., "production", "staging", "local")'),
+      description: z.string().optional().describe('Optional description of the test run'),
+      milestoneId: z
+        .string()
+        .optional()
+        .describe('Optional milestone ID to associate with the test run')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { projectId, name, description, environment, milestoneId } = args as {
-        projectId: string;
-        name: string;
-        description?: string;
-        environment: string;
-        milestoneId?: string;
-      };
+      const { projectId, name, description, environment, milestoneId } = args;
 
       const data = await apiRequest(`/runs`, {
         method: 'POST',
@@ -168,35 +141,17 @@ server.registerTool(
   {
     description: 'List test runs for a project',
     inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string',
-          description: 'The project ID to list test runs for'
-        },
-        limit: {
-          type: 'number',
-          description: 'Maximum number of results to return (default: 50)'
-        },
-        offset: {
-          type: 'number',
-          description: 'Number of results to skip for pagination (default: 0)'
-        }
-      },
-      required: ['projectId']
-    } as any
+      projectId: z.string().describe('The project ID to list test runs for'),
+      limit: z.number().optional().describe('Maximum number of results to return (default: 50)'),
+      offset: z
+        .number()
+        .optional()
+        .describe('Number of results to skip for pagination (default: 0)')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const {
-        projectId,
-        limit = 50,
-        offset = 0
-      } = args as {
-        projectId: string;
-        limit?: number;
-        offset?: number;
-      };
+      const { projectId, limit = 50, offset = 0 } = args;
 
       const data = await apiRequest(`/runs?projectId=${projectId}&limit=${limit}&offset=${offset}`);
 
@@ -228,26 +183,13 @@ server.registerTool(
   {
     description: 'Get detailed information about a specific test run',
     inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string',
-          description: 'The project ID'
-        },
-        testRunId: {
-          type: 'string',
-          description: 'The test run ID'
-        }
-      },
-      required: ['projectId', 'testRunId']
-    } as any
+      projectId: z.string().describe('The project ID'),
+      testRunId: z.string().describe('The test run ID')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { projectId, testRunId } = args as {
-        projectId: string;
-        testRunId: string;
-      };
+      const { projectId, testRunId } = args;
 
       const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}`);
 
@@ -279,32 +221,17 @@ server.registerTool(
   {
     description: 'Get test results for a specific test run',
     inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string',
-          description: 'The project ID'
-        },
-        testRunId: {
-          type: 'string',
-          description: 'The test run ID'
-        },
-        status: {
-          type: 'string',
-          description: 'Optional filter by status (passed, failed, skipped, etc.)',
-          enum: ['passed', 'failed', 'skipped', 'blocked', 'retest', 'untested']
-        }
-      },
-      required: ['projectId', 'testRunId']
-    } as any
+      projectId: z.string().describe('The project ID'),
+      testRunId: z.string().describe('The test run ID'),
+      status: z
+        .enum(['passed', 'failed', 'skipped', 'blocked', 'retest', 'untested'])
+        .optional()
+        .describe('Optional filter by status')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { projectId, testRunId, status } = args as {
-        projectId: string;
-        testRunId: string;
-        status?: string;
-      };
+      const { projectId, testRunId, status } = args;
 
       const query = status ? `?status=${status}` : '';
       const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}/results${query}`);
@@ -337,74 +264,44 @@ server.registerTool(
   {
     description: 'Create a new test case in a project',
     inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string',
-          description: 'The project ID'
-        },
-        title: {
-          type: 'string',
-          description: 'Title of the test case'
-        },
-        description: {
-          type: 'string',
-          description: 'Detailed description of the test case'
-        },
-        priority: {
-          type: 'string',
-          description: 'Priority level',
-          enum: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
-        },
-        type: {
-          type: 'string',
-          description: 'Test type',
-          enum: [
-            'FUNCTIONAL',
-            'REGRESSION',
-            'SMOKE',
-            'INTEGRATION',
-            'PERFORMANCE',
-            'SECURITY',
-            'UI',
-            'API',
-            'UNIT',
-            'E2E'
-          ]
-        },
-        automationStatus: {
-          type: 'string',
-          description: 'Automation status',
-          enum: ['AUTOMATED', 'NOT_AUTOMATED', 'CANDIDATE']
-        },
-        steps: {
-          type: 'array',
-          description: 'Test steps',
-          items: {
-            type: 'object',
-            properties: {
-              order: { type: 'number' },
-              action: { type: 'string' },
-              expectedResult: { type: 'string' }
-            },
-            required: ['order', 'action']
-          }
-        }
-      },
-      required: ['projectId', 'title']
-    } as any
+      projectId: z.string().describe('The project ID'),
+      title: z.string().describe('Title of the test case'),
+      description: z.string().optional().describe('Detailed description of the test case'),
+      priority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional().describe('Priority level'),
+      type: z
+        .enum([
+          'FUNCTIONAL',
+          'REGRESSION',
+          'SMOKE',
+          'INTEGRATION',
+          'PERFORMANCE',
+          'SECURITY',
+          'UI',
+          'API',
+          'UNIT',
+          'E2E'
+        ])
+        .optional()
+        .describe('Test type'),
+      automationStatus: z
+        .enum(['AUTOMATED', 'NOT_AUTOMATED', 'CANDIDATE'])
+        .optional()
+        .describe('Automation status'),
+      steps: z
+        .array(
+          z.object({
+            order: z.number(),
+            action: z.string(),
+            expectedResult: z.string().optional()
+          })
+        )
+        .optional()
+        .describe('Test steps')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { projectId, ...testCaseData } = args as {
-        projectId: string;
-        title: string;
-        description?: string;
-        priority?: string;
-        type?: string;
-        automationStatus?: string;
-        steps?: Array<{ order: number; action: string; expectedResult?: string }>;
-      };
+      const { projectId, ...testCaseData } = args;
 
       const data = await apiRequest(`/projects/${projectId}/test-cases`, {
         method: 'POST',
@@ -439,59 +336,30 @@ server.registerTool(
   {
     description: 'Submit test results for a test run (useful for manual test execution tracking)',
     inputSchema: {
-      type: 'object',
-      properties: {
-        projectId: {
-          type: 'string',
-          description: 'The project ID'
-        },
-        testRunId: {
-          type: 'string',
-          description: 'The test run ID'
-        },
-        results: {
-          type: 'array',
-          description: 'Array of test results',
-          items: {
-            type: 'object',
-            properties: {
-              title: { type: 'string', description: 'Test case title' },
-              status: {
-                type: 'string',
-                enum: ['passed', 'failed', 'skipped', 'blocked'],
-                description: 'Test result status'
-              },
-              duration: {
-                type: 'number',
-                description: 'Duration in milliseconds'
-              },
-              error: {
-                type: 'object',
-                properties: {
-                  message: { type: 'string' },
-                  stack: { type: 'string' }
-                }
-              }
-            },
-            required: ['title', 'status']
-          }
-        }
-      },
-      required: ['projectId', 'testRunId', 'results']
-    } as any
+      projectId: z.string().describe('The project ID'),
+      testRunId: z.string().describe('The test run ID'),
+      results: z
+        .array(
+          z.object({
+            title: z.string().describe('Test case title'),
+            status: z
+              .enum(['passed', 'failed', 'skipped', 'blocked'])
+              .describe('Test result status'),
+            duration: z.number().optional().describe('Duration in milliseconds'),
+            error: z
+              .object({
+                message: z.string(),
+                stack: z.string().optional()
+              })
+              .optional()
+          })
+        )
+        .describe('Array of test results')
+    }
   },
-  async (args: any, _extra: any) => {
+  async (args) => {
     try {
-      const { projectId, testRunId, results } = args as {
-        projectId: string;
-        testRunId: string;
-        results: Array<{
-          title: string;
-          status: string;
-          duration?: number;
-          error?: { message: string; stack?: string };
-        }>;
-      };
+      const { projectId, testRunId, results } = args;
 
       const data = await apiRequest(`/results`, {
         method: 'POST',

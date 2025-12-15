@@ -210,17 +210,79 @@ Submit test results for a test run (useful for manual testing).
 
 ## Development
 
+### Local Development Setup
+
+1. **Clone and install dependencies:**
+
+   ```bash
+   git clone https://github.com/QAStudio-Dev/mcp-server.git
+   cd mcp-server
+   npm install
+   ```
+
+2. **Build the project:**
+
+   ```bash
+   npm run build
+   ```
+
+3. **Configure Claude Desktop for local development:**
+
+   Edit your Claude Desktop config file:
+   - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+   Add this configuration (replace the path with your actual project path):
+
+   ```json
+   {
+     "mcpServers": {
+       "qastudio": {
+         "command": "node",
+         "args": ["/Users/yourusername/path/to/qastudio-mcp/dist/index.js"],
+         "env": {
+           "QA_STUDIO_API_URL": "https://qastudio.dev/api",
+           "QA_STUDIO_API_KEY": "your-api-key-here"
+         }
+       }
+     }
+   }
+   ```
+
+4. **Restart Claude Desktop** to load the MCP server
+
+5. **Run tests:**
+
+   ```bash
+   # Run all tests
+   npm test
+
+   # Run tests in watch mode
+   npm run test:watch
+
+   # Run tests with UI
+   npm run test:ui
+   ```
+
+6. **Watch mode for development:**
+
+   ```bash
+   # Automatically rebuild on file changes
+   npm run dev
+   ```
+
+   After making changes, restart Claude Desktop to reload the server.
+
+### Testing the Server Directly
+
+You can test the MCP server independently (without Claude):
+
 ```bash
-# Install dependencies
-npm install
+# Set environment variables
+export QA_STUDIO_API_URL="https://qastudio.dev/api"
+export QA_STUDIO_API_KEY="your-api-key"
 
-# Build
-npm run build
-
-# Watch mode
-npm run dev
-
-# Test locally
+# Run the server (it will listen on stdio)
 node dist/index.js
 ```
 

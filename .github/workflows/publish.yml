@@ -48,6 +48,9 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "New version: $NEW_VERSION"
 
+      - name: Run tests
+        run: npm test
+
       - name: Build
         run: npm run build
 
