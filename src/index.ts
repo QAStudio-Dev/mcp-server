@@ -1,12 +1,7 @@
 #!/usr/bin/env node
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool
-} from '@modelcontextprotocol/sdk/types.js';
 
 // API Configuration from environment
 const API_URL = process.env.QA_STUDIO_API_URL || 'http://localhost:3000/api';
@@ -37,10 +32,23 @@ async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<
   return response.json();
 }
 
-// Define MCP Tools
-const tools: Tool[] = [
+// Create MCP Server
+const server = new McpServer(
   {
-    name: 'list-projects',
+    name: 'qastudio-mcp',
+    version: '1.0.0'
+  },
+  {
+    capabilities: {
+      tools: {}
+    }
+  }
+);
+
+// Register tool: list-projects
+server.registerTool(
+  'list-projects',
+  {
     description: 'List all projects in QA Studio',
     inputSchema: {
       type: 'object',
@@ -50,10 +58,39 @@ const tools: Tool[] = [
           description: 'Optional search query to filter projects by name'
         }
       }
-    }
+    } as any
   },
+  async (args: any, _extra: any) => {
+    try {
+      const { search } = args as { search?: string };
+      const query = search ? `?search=${encodeURIComponent(search)}` : '';
+      const data = await apiRequest(`/projects${query}`);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(data, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: create-test-run
+server.registerTool(
+  'create-test-run',
   {
-    name: 'create-test-run',
     description: 'Create a new test run for a project',
     inputSchema: {
       type: 'object',
@@ -80,10 +117,55 @@ const tools: Tool[] = [
         }
       },
       required: ['projectId', 'name', 'environment']
-    }
+    } as any
   },
+  async (args: any, _extra: any) => {
+    try {
+      const { projectId, name, description, environment, milestoneId } = args as {
+        projectId: string;
+        name: string;
+        description?: string;
+        environment: string;
+        milestoneId?: string;
+      };
+
+      const data = await apiRequest(`/runs`, {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId,
+          name,
+          description,
+          environment,
+          milestoneId
+        })
+      });
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `✅ Test run created successfully!\n\nID: ${data.id}\nName: ${data.name}\nEnvironment: ${data.environment}\n\nView: ${API_URL.replace('/api', '')}/projects/${projectId}/runs/${data.id}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: list-test-runs
+server.registerTool(
+  'list-test-runs',
   {
-    name: 'list-test-runs',
     description: 'List test runs for a project',
     inputSchema: {
       type: 'object',
@@ -102,10 +184,48 @@ const tools: Tool[] = [
         }
       },
       required: ['projectId']
-    }
+    } as any
   },
+  async (args: any, _extra: any) => {
+    try {
+      const {
+        projectId,
+        limit = 50,
+        offset = 0
+      } = args as {
+        projectId: string;
+        limit?: number;
+        offset?: number;
+      };
+
+      const data = await apiRequest(`/runs?projectId=${projectId}&limit=${limit}&offset=${offset}`);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(data, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: get-test-run
+server.registerTool(
+  'get-test-run',
   {
-    name: 'get-test-run',
     description: 'Get detailed information about a specific test run',
     inputSchema: {
       type: 'object',
@@ -120,10 +240,43 @@ const tools: Tool[] = [
         }
       },
       required: ['projectId', 'testRunId']
-    }
+    } as any
   },
+  async (args: any, _extra: any) => {
+    try {
+      const { projectId, testRunId } = args as {
+        projectId: string;
+        testRunId: string;
+      };
+
+      const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}`);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(data, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: get-test-results
+server.registerTool(
+  'get-test-results',
   {
-    name: 'get-test-results',
     description: 'Get test results for a specific test run',
     inputSchema: {
       type: 'object',
@@ -143,10 +296,45 @@ const tools: Tool[] = [
         }
       },
       required: ['projectId', 'testRunId']
-    }
+    } as any
   },
+  async (args: any, _extra: any) => {
+    try {
+      const { projectId, testRunId, status } = args as {
+        projectId: string;
+        testRunId: string;
+        status?: string;
+      };
+
+      const query = status ? `?status=${status}` : '';
+      const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}/results${query}`);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(data, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: create-test-case
+server.registerTool(
+  'create-test-case',
   {
-    name: 'create-test-case',
     description: 'Create a new test case in a project',
     inputSchema: {
       type: 'object',
@@ -204,10 +392,51 @@ const tools: Tool[] = [
         }
       },
       required: ['projectId', 'title']
-    }
+    } as any
   },
+  async (args: any, _extra: any) => {
+    try {
+      const { projectId, ...testCaseData } = args as {
+        projectId: string;
+        title: string;
+        description?: string;
+        priority?: string;
+        type?: string;
+        automationStatus?: string;
+        steps?: Array<{ order: number; action: string; expectedResult?: string }>;
+      };
+
+      const data = await apiRequest(`/projects/${projectId}/test-cases`, {
+        method: 'POST',
+        body: JSON.stringify(testCaseData)
+      });
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `✅ Test case created successfully!\n\nID: ${data.id}\nTitle: ${data.title}\nPriority: ${data.priority}\nType: ${data.type}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+
+// Register tool: submit-test-results
+server.registerTool(
+  'submit-test-results',
   {
-    name: 'submit-test-results',
     description: 'Submit test results for a test run (useful for manual test execution tracking)',
     inputSchema: {
       type: 'object',
@@ -249,215 +478,53 @@ const tools: Tool[] = [
         }
       },
       required: ['projectId', 'testRunId', 'results']
-    }
-  }
-];
-
-// Create MCP Server
-const server = new Server(
-  {
-    name: 'qastudio-mcp',
-    version: '1.0.0'
+    } as any
   },
-  {
-    capabilities: {
-      tools: {}
+  async (args: any, _extra: any) => {
+    try {
+      const { projectId, testRunId, results } = args as {
+        projectId: string;
+        testRunId: string;
+        results: Array<{
+          title: string;
+          status: string;
+          duration?: number;
+          error?: { message: string; stack?: string };
+        }>;
+      };
+
+      const data = await apiRequest(`/results`, {
+        method: 'POST',
+        body: JSON.stringify({
+          testRunId,
+          results: results.map((r) => ({
+            ...r,
+            projectName: projectId // Map to expected field
+          }))
+        })
+      });
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `✅ Submitted ${results.length} test results!\n\nProcessed: ${data.processedCount}\nDuplicates: ${data.duplicatesSkipped}\nErrors: ${data.errors.length}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
     }
   }
 );
-
-// Handle tool list requests
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools };
-});
-
-// Handle tool execution requests
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  try {
-    switch (name) {
-      case 'list-projects': {
-        const { search } = args as { search?: string };
-        const query = search ? `?search=${encodeURIComponent(search)}` : '';
-        const data = await apiRequest(`/projects${query}`);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2)
-            }
-          ]
-        };
-      }
-
-      case 'create-test-run': {
-        const { projectId, name, description, environment, milestoneId } = args as {
-          projectId: string;
-          name: string;
-          description?: string;
-          environment: string;
-          milestoneId?: string;
-        };
-
-        const data = await apiRequest(`/runs`, {
-          method: 'POST',
-          body: JSON.stringify({
-            projectId,
-            name,
-            description,
-            environment,
-            milestoneId
-          })
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✅ Test run created successfully!\n\nID: ${data.id}\nName: ${data.name}\nEnvironment: ${data.environment}\n\nView: ${API_URL.replace('/api', '')}/projects/${projectId}/runs/${data.id}`
-            }
-          ]
-        };
-      }
-
-      case 'list-test-runs': {
-        const {
-          projectId,
-          limit = 50,
-          offset = 0
-        } = args as {
-          projectId: string;
-          limit?: number;
-          offset?: number;
-        };
-
-        const data = await apiRequest(
-          `/runs?projectId=${projectId}&limit=${limit}&offset=${offset}`
-        );
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2)
-            }
-          ]
-        };
-      }
-
-      case 'get-test-run': {
-        const { projectId, testRunId } = args as {
-          projectId: string;
-          testRunId: string;
-        };
-
-        const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}`);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2)
-            }
-          ]
-        };
-      }
-
-      case 'get-test-results': {
-        const { projectId, testRunId, status } = args as {
-          projectId: string;
-          testRunId: string;
-          status?: string;
-        };
-
-        const query = status ? `?status=${status}` : '';
-        const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}/results${query}`);
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(data, null, 2)
-            }
-          ]
-        };
-      }
-
-      case 'create-test-case': {
-        const { projectId, ...testCaseData } = args as {
-          projectId: string;
-          title: string;
-          description?: string;
-          priority?: string;
-          type?: string;
-          automationStatus?: string;
-          steps?: Array<{ order: number; action: string; expectedResult?: string }>;
-        };
-
-        const data = await apiRequest(`/projects/${projectId}/test-cases`, {
-          method: 'POST',
-          body: JSON.stringify(testCaseData)
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✅ Test case created successfully!\n\nID: ${data.id}\nTitle: ${data.title}\nPriority: ${data.priority}\nType: ${data.type}`
-            }
-          ]
-        };
-      }
-
-      case 'submit-test-results': {
-        const { projectId, testRunId, results } = args as {
-          projectId: string;
-          testRunId: string;
-          results: Array<{
-            title: string;
-            status: string;
-            duration?: number;
-            error?: { message: string; stack?: string };
-          }>;
-        };
-
-        const data = await apiRequest(`/results`, {
-          method: 'POST',
-          body: JSON.stringify({
-            testRunId,
-            results: results.map((r) => ({
-              ...r,
-              projectName: projectId // Map to expected field
-            }))
-          })
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✅ Submitted ${results.length} test results!\n\nProcessed: ${data.processedCount}\nDuplicates: ${data.duplicatesSkipped}\nErrors: ${data.errors.length}`
-            }
-          ]
-        };
-      }
-
-      default:
-        throw new Error(`Unknown tool: ${name}`);
-    }
-  } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error: ${error instanceof Error ? error.message : String(error)}`
-        }
-      ],
-      isError: true
-    };
-  }
-});
 
 // Start the server
 async function main() {
