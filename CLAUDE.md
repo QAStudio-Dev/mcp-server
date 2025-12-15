@@ -16,7 +16,7 @@ This is an MCP (Model Context Protocol) server that exposes the QA Studio API as
 
 - **Runtime**: Node.js 18+
 - **Language**: TypeScript
-- **Protocol**: MCP (Model Context Protocol) SDK v1.0.4
+- **Protocol**: MCP (Model Context Protocol) SDK v1.24.3
 - **Transport**: stdio (standard input/output)
 - **API Client**: Native fetch API
 
@@ -24,11 +24,11 @@ This is an MCP (Model Context Protocol) server that exposes the QA Studio API as
 
 ### MCP Server Pattern
 
-The server follows the standard MCP server architecture:
+The server follows the modern MCP server architecture using `McpServer`:
 
-1. **Server Initialization**: Creates MCP server with capabilities
-2. **Tool Registration**: Defines available tools with schemas
-3. **Request Handlers**: Implements `ListTools` and `CallTool` handlers
+1. **Server Initialization**: Creates `McpServer` instance with name, version, and capabilities
+2. **Tool Registration**: Each tool is registered individually using `server.registerTool()`
+3. **Handler Callbacks**: Each tool has its own dedicated callback function with schema validation
 4. **Transport**: Uses stdio for communication with MCP clients
 5. **API Client**: Makes HTTP requests to QA Studio API
 
@@ -275,28 +275,114 @@ async function apiRequest(endpoint: string, options: RequestInit = {}): Promise<
 - JSON content type by default
 - Supports all HTTP methods (GET, POST, PUT, DELETE, etc.)
 
-## Error Handling
+## MCP Server Implementation
 
-All tools implement try-catch error handling:
+### Server Initialization
+
+The server uses the modern `McpServer` class from the MCP SDK:
 
 ```typescript
-try {
-  // Tool implementation
-  const data = await apiRequest('/endpoint');
-  return {
-    content: [{ type: 'text', text: JSON.stringify(data, null, 2) }]
-  };
-} catch (error) {
-  return {
-    content: [
-      {
-        type: 'text',
-        text: `Error: ${error instanceof Error ? error.message : String(error)}`
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+const server = new McpServer(
+  {
+    name: 'qastudio-mcp',
+    version: '1.0.0'
+  },
+  {
+    capabilities: {
+      tools: {}
+    }
+  }
+);
+```
+
+### Tool Registration Pattern
+
+Each tool is registered using `server.registerTool()` with three parameters:
+
+1. **Tool Name**: Unique identifier for the tool
+2. **Configuration Object**: Contains `description` and `inputSchema` (JSON Schema)
+3. **Callback Function**: Handler that receives `(args, extra)` parameters
+
+**Example:**
+
+```typescript
+server.registerTool(
+  'list-projects',
+  {
+    description: 'List all projects in QA Studio',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        search: {
+          type: 'string',
+          description: 'Optional search query to filter projects by name'
+        }
       }
-    ],
-    isError: true
-  };
-}
+    } as any
+  },
+  async (args: any, _extra: any) => {
+    try {
+      const { search } = args as { search?: string };
+      const data = await apiRequest(
+        `/projects${search ? `?search=${encodeURIComponent(search)}` : ''}`
+      );
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(data, null, 2)
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+```
+
+**Key Points:**
+
+- `inputSchema as any` - Type cast needed for JSON Schema compatibility
+- `type: 'text' as const` - Ensures proper TypeScript literal type
+- `args: any, _extra: any` - Callback parameters (args contains validated input)
+- Each tool is self-contained with schema and handler together
+
+## Error Handling
+
+All tools implement try-catch error handling within their callbacks:
+
+```typescript
+async (args: any, _extra: any) => {
+  try {
+    // Tool implementation
+    const data = await apiRequest('/endpoint');
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }]
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: `Error: ${error instanceof Error ? error.message : String(error)}`
+        }
+      ],
+      isError: true
+    };
+  }
+};
 ```
 
 **Error Types:**
@@ -387,11 +473,50 @@ node dist/index.js 2> debug.log
 
 When adding new tools:
 
-1. Add the tool definition to the `tools` array with proper schema
-2. Implement the tool handler in the `CallToolRequestSchema` handler
-3. Update the README.md with usage examples
-4. Test the tool against a live QA Studio instance
-5. Update this CLAUDE.md file with implementation details
+1. Use `server.registerTool()` to register the new tool with its schema and handler
+2. Follow the existing pattern: tool name, config object (description + inputSchema), and async callback
+3. Include proper error handling with try-catch in the callback
+4. Use type assertions: `inputSchema as any` and `type: 'text' as const`
+5. Update the README.md with usage examples and API endpoint documentation
+6. Test the tool against a live QA Studio instance
+7. Update this CLAUDE.md file with the new tool details in the "Available Tools" section
+
+**Example template for new tools:**
+
+```typescript
+server.registerTool(
+  'tool-name',
+  {
+    description: 'Description of what the tool does',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        // Define parameters here
+      },
+      required: ['requiredParam']
+    } as any
+  },
+  async (args: any, _extra: any) => {
+    try {
+      const { param } = args as { param: string };
+      const data = await apiRequest('/endpoint');
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ],
+        isError: true
+      };
+    }
+  }
+);
+```
 
 ## Related Repositories
 
