@@ -1,0 +1,46 @@
+{
+  "name": "@qastudio-dev/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for QA Studio - interact with your test management platform from Claude",
+  "type": "module",
+  "bin": {
+    "qastudio-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "qa",
+    "testing",
+    "test-management",
+    "playwright",
+    "test-automation"
+  ],
+  "author": "QA Studio Dev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QAStudio-Dev/mcp-server.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
