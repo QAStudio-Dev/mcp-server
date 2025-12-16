@@ -43,7 +43,7 @@ qastudio-mcp/
 ├── tsconfig.json         # TypeScript configuration
 ├── README.md             # User-facing documentation
 ├── CLAUDE.md            # Developer documentation (this file)
-└── LICENSE              # MIT License
+└── LICENSE              # AGPL-3.0 License
 ```
 
 ## Available Tools
@@ -450,7 +450,7 @@ npm publish --access public
 - **Scope**: `@qastudio-dev`
 - **Entry Point**: `dist/index.js` (executable)
 - **Files**: Only `dist/` directory is published
-- **License**: MIT
+- **License**: AGPL-3.0
 
 ### Version Management
 

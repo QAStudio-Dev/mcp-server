@@ -1,5 +1,7 @@
 # QA Studio MCP Server
 
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+
 MCP (Model Context Protocol) server for QA Studio - interact with your test management platform directly from Claude.
 
 ## Features
@@ -305,7 +307,16 @@ To create an API key in QA Studio:
 
 ## License
 
-MIT
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) - see the [LICENSE](LICENSE) file for details.
+
+### What does AGPL-3.0 mean?
+
+- You are free to use, modify, and distribute this software
+- If you modify this software and run it on a server (including offering it as a service), you must make your modified source code available to users
+- Any derivative work must also be licensed under AGPL-3.0
+- This ensures that improvements to the software remain open source and benefit the community
+
+For more information, see the [full license text](LICENSE) or visit [GNU AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
 ## Links
 

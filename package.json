@@ -30,7 +30,7 @@
     "test-automation"
   ],
   "author": "QA Studio Dev",
-  "license": "MIT",
+  "license": "AGPL-3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/QAStudio-Dev/mcp-server.git"
