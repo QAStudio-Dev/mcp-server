@@ -1,6 +1,6 @@
 {
   "name": "@qastudio-dev/mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for QA Studio - interact with your test management platform from Claude",
   "type": "module",
   "bin": {
