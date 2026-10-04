@@ -48,6 +48,10 @@ describe('API Request Formatting', () => {
       expect(listTestRunsPath('proj-123', 50, 50)).toBe('/runs?projectId=proj-123&limit=50&page=2');
     });
 
+    it('should reject list-test-runs offsets that are not page-aligned', () => {
+      expect(() => listTestRunsPath('proj-123', 50, 75)).toThrow(/not aligned to limit 50/);
+    });
+
     it('should construct correct URL for get test run', () => {
       const projectId = 'proj-123';
       const testRunId = 'run-456';
@@ -58,6 +62,9 @@ describe('API Request Formatting', () => {
     it('should construct correct URL for test results with status filter', () => {
       expect(getTestResultsPath('run-456', 'failed')).toBe(
         '/runs/run-456/results?status=FAILED&limit=50&page=1'
+      );
+      expect(getTestResultsPath('run-456', 'failed', 2)).toBe(
+        '/runs/run-456/results?status=FAILED&limit=50&page=2'
       );
     });
   });

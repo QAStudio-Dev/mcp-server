@@ -154,7 +154,9 @@ server.registerTool(
       offset: z
         .number()
         .optional()
-        .describe('Number of results to skip for pagination (default: 0)')
+        .describe(
+          'Number of results to skip (default: 0). Must be a multiple of limit so it maps to a Studio page.'
+        )
     }
   },
   async (args) => {
@@ -227,21 +229,29 @@ server.registerTool(
 server.registerTool(
   'get-test-results',
   {
-    description: 'Get test results for a specific test run',
+    description: 'Get test results for a specific test run. Pass page to retrieve later pages.',
     inputSchema: {
       projectId: z.string().describe('The project ID'),
       testRunId: z.string().describe('The test run ID'),
       status: z
         .enum(['passed', 'failed', 'skipped', 'blocked', 'retest', 'untested'])
         .optional()
-        .describe('Optional filter by status')
+        .describe('Optional filter by status'),
+      page: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe(
+          'Results page to fetch (default: 1). Use pagination.totalPages to request later pages.'
+        )
     }
   },
   async (args) => {
     try {
-      const { testRunId, status } = args;
+      const { testRunId, status, page = 1 } = args;
 
-      const data = await apiRequest(getTestResultsPath(testRunId, status));
+      const data = await apiRequest(getTestResultsPath(testRunId, status, page));
 
       return {
         content: [

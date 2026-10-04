@@ -15,17 +15,31 @@ const STATUS_MAP: Record<string, string> = {
 };
 
 export function listTestRunsPath(projectId: string, limit = 50, offset = 0): string {
-  const page = Math.floor(offset / limit) + 1;
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error('limit must be a positive integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error('offset must be a non-negative integer');
+  }
+  if (offset % limit !== 0) {
+    throw new Error(
+      `offset ${offset} is not aligned to limit ${limit}. Use a multiple of limit (0, ${limit}, ${limit * 2}, ...).`
+    );
+  }
+  const page = offset / limit + 1;
   return `/runs?projectId=${encodeURIComponent(projectId)}&limit=${limit}&page=${page}`;
 }
 
-export function getTestResultsPath(testRunId: string, status?: string): string {
+export function getTestResultsPath(testRunId: string, status?: string, page = 1): string {
+  if (!Number.isInteger(page) || page < 1) {
+    throw new Error('page must be a positive integer');
+  }
   const params = new URLSearchParams();
   if (status) {
     params.set('status', STATUS_MAP[status] ?? status.toUpperCase());
   }
   params.set('limit', '50');
-  params.set('page', '1');
+  params.set('page', String(page));
   return `/runs/${encodeURIComponent(testRunId)}/results?${params.toString()}`;
 }
 
