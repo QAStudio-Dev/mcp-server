@@ -3,6 +3,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import {
+  compactTestResults,
+  compactTestRun,
+  compactTestRuns,
+  getTestResultsPath,
+  listTestRunsPath,
+  mapSubmitResults
+} from './reporting.js';
 
 // API Configuration from environment
 const API_URL = process.env.QA_STUDIO_API_URL || 'http://localhost:3000/api';
@@ -146,20 +154,22 @@ server.registerTool(
       offset: z
         .number()
         .optional()
-        .describe('Number of results to skip for pagination (default: 0)')
+        .describe(
+          'Number of results to skip (default: 0). Must be a multiple of limit so it maps to a Studio page.'
+        )
     }
   },
   async (args) => {
     try {
       const { projectId, limit = 50, offset = 0 } = args;
 
-      const data = await apiRequest(`/runs?projectId=${projectId}&limit=${limit}&offset=${offset}`);
+      const data = await apiRequest(listTestRunsPath(projectId, limit, offset));
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(data, null, 2)
+            text: JSON.stringify(compactTestRuns(data), null, 2)
           }
         ]
       };
@@ -197,7 +207,7 @@ server.registerTool(
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(data, null, 2)
+            text: JSON.stringify(compactTestRun(data), null, 2)
           }
         ]
       };
@@ -219,28 +229,35 @@ server.registerTool(
 server.registerTool(
   'get-test-results',
   {
-    description: 'Get test results for a specific test run',
+    description: 'Get test results for a specific test run. Pass page to retrieve later pages.',
     inputSchema: {
       projectId: z.string().describe('The project ID'),
       testRunId: z.string().describe('The test run ID'),
       status: z
         .enum(['passed', 'failed', 'skipped', 'blocked', 'retest', 'untested'])
         .optional()
-        .describe('Optional filter by status')
+        .describe('Optional filter by status'),
+      page: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe(
+          'Results page to fetch (default: 1). Use pagination.totalPages to request later pages.'
+        )
     }
   },
   async (args) => {
     try {
-      const { projectId, testRunId, status } = args;
+      const { testRunId, status, page = 1 } = args;
 
-      const query = status ? `?status=${status}` : '';
-      const data = await apiRequest(`/projects/${projectId}/runs/${testRunId}/results${query}`);
+      const data = await apiRequest(getTestResultsPath(testRunId, status, page));
 
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(data, null, 2)
+            text: JSON.stringify(compactTestResults(data), null, 2)
           }
         ]
       };
@@ -359,16 +376,13 @@ server.registerTool(
   },
   async (args) => {
     try {
-      const { projectId, testRunId, results } = args;
+      const { testRunId, results } = args;
 
       const data = await apiRequest(`/results`, {
         method: 'POST',
         body: JSON.stringify({
           testRunId,
-          results: results.map((r) => ({
-            ...r,
-            projectName: projectId // Map to expected field
-          }))
+          results: mapSubmitResults(results)
         })
       });
 

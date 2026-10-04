@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import {
+  compactTestResults,
+  getTestResultsPath,
+  listTestRunsPath,
+  mapSubmitResults
+} from '../reporting.js';
 
 describe('API Request Formatting', () => {
   describe('Query parameter encoding', () => {
@@ -38,11 +44,12 @@ describe('API Request Formatting', () => {
     });
 
     it('should construct correct URL for list test runs with pagination', () => {
-      const projectId = 'proj-123';
-      const limit = 50;
-      const offset = 0;
-      const url = `${API_URL}/runs?projectId=${projectId}&limit=${limit}&offset=${offset}`;
-      expect(url).toBe('https://qastudio.dev/api/runs?projectId=proj-123&limit=50&offset=0');
+      expect(listTestRunsPath('proj-123', 50, 0)).toBe('/runs?projectId=proj-123&limit=50&page=1');
+      expect(listTestRunsPath('proj-123', 50, 50)).toBe('/runs?projectId=proj-123&limit=50&page=2');
+    });
+
+    it('should reject list-test-runs offsets that are not page-aligned', () => {
+      expect(() => listTestRunsPath('proj-123', 50, 75)).toThrow(/not aligned to limit 50/);
     });
 
     it('should construct correct URL for get test run', () => {
@@ -53,13 +60,11 @@ describe('API Request Formatting', () => {
     });
 
     it('should construct correct URL for test results with status filter', () => {
-      const projectId = 'proj-123';
-      const testRunId = 'run-456';
-      const status = 'failed';
-      const query = `?status=${status}`;
-      const url = `${API_URL}/projects/${projectId}/runs/${testRunId}/results${query}`;
-      expect(url).toBe(
-        'https://qastudio.dev/api/projects/proj-123/runs/run-456/results?status=failed'
+      expect(getTestResultsPath('run-456', 'failed')).toBe(
+        '/runs/run-456/results?status=FAILED&limit=50&page=1'
+      );
+      expect(getTestResultsPath('run-456', 'failed', 2)).toBe(
+        '/runs/run-456/results?status=FAILED&limit=50&page=2'
       );
     });
   });
@@ -102,21 +107,20 @@ describe('API Request Formatting', () => {
       expect(parsed.steps[0].order).toBe(1);
     });
 
-    it('should map projectId to projectName for submit results', () => {
-      const projectId = 'proj-123';
-      const results = [
+    it('should flatten nested error objects for submit results', () => {
+      const mappedResults = mapSubmitResults([
         { title: 'Test 1', status: 'passed', duration: 100 },
-        { title: 'Test 2', status: 'failed', duration: 200 }
-      ];
+        {
+          title: 'Test 2',
+          status: 'failed',
+          duration: 200,
+          error: { message: 'boom', stack: 'Error: boom' }
+        }
+      ]);
 
-      const mappedResults = results.map((r) => ({
-        ...r,
-        projectName: projectId
-      }));
-
-      expect(mappedResults[0].projectName).toBe('proj-123');
-      expect(mappedResults[1].projectName).toBe('proj-123');
-      expect(mappedResults[0].title).toBe('Test 1');
+      expect(mappedResults[0]).not.toHaveProperty('projectName');
+      expect(mappedResults[1].errorMessage).toBe('boom');
+      expect(mappedResults[1].stackTrace).toBe('Error: boom');
     });
   });
 
@@ -197,6 +201,32 @@ describe('API Request Formatting', () => {
       expect(message).toContain('✅ Submitted 5 test results!');
       expect(message).toContain('Processed: 5');
       expect(message).toContain('Errors: 0');
+    });
+  });
+
+  describe('compact payloads', () => {
+    it('should keep only summary fields for test results', () => {
+      const compact = compactTestResults({
+        testResults: [
+          {
+            id: 'tr-1',
+            title: 'Login',
+            status: 'FAILED',
+            duration: 12,
+            stackTrace: 'huge',
+            steps: [{ title: 'click' }]
+          }
+        ],
+        pagination: { page: 1, limit: 50, total: 1, totalPages: 1 }
+      });
+
+      expect(compact.testResults[0]).toEqual({
+        id: 'tr-1',
+        title: 'Login',
+        status: 'FAILED',
+        duration: 12
+      });
+      expect(compact.testResults[0]).not.toHaveProperty('steps');
     });
   });
 });
