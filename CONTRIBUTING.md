@@ -154,6 +154,10 @@ npm run test:ui
    - Screenshots/examples if applicable
    - Test results
 
+### CodeRabbit
+
+PRs are reviewed automatically by CodeRabbit using [`.coderabbit.yaml`](.coderabbit.yaml). Review guidance is also taken from `CLAUDE.md`, `CONTRIBUTING.md`, and `README.md`. Draft PRs and titles containing `WIP` or `DO NOT MERGE` are skipped. Use `@coderabbitai summary` in the PR description to fill in the high-level summary placeholder.
+
 ## Code Style
 
 - Use TypeScript strict mode
