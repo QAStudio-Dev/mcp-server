@@ -4,11 +4,16 @@ This document explains how to publish new versions of the QA Studio MCP Server t
 
 ## Prerequisites
 
-1. **NPM Account**: You need an npm account with publish access to the `@qastudio-dev` organization
-2. **GitHub Secret**: Add your npm token as `NPM_TOKEN` in GitHub repository secrets
-   - Go to: Settings → Secrets and variables → Actions → New repository secret
-   - Name: `NPM_TOKEN`
-   - Value: Your npm access token (get from https://www.npmjs.com/settings/YOUR_USERNAME/tokens)
+1. **NPM Account**: You need publish access to `@qastudio-dev/mcp-server`
+2. **Trusted Publisher** (one-time, no rotating token):
+   - Open https://www.npmjs.com/package/@qastudio-dev/mcp-server → Settings → Trusted Publisher
+   - Publisher: GitHub Actions
+   - Organization: `QAStudio-Dev`
+   - Repository: `mcp-server`
+   - Workflow filename: `publish.yml`
+   - Enable **Allow npm publish**
+   - Leave Environment name empty
+3. **Do not set `NPM_TOKEN` / `NODE_AUTH_TOKEN` on the publish step.** A stored token overrides OIDC and fails with `E404` when it expires.
 
 ## Publishing a New Version
 
@@ -23,7 +28,8 @@ The project uses GitHub Actions for automated publishing. To publish a new versi
    - **patch**: Bug fixes, minor changes (1.0.0 → 1.0.1)
    - **minor**: New features, backwards compatible (1.0.0 → 1.1.0)
    - **major**: Breaking changes (1.0.0 → 2.0.0)
-5. Click **"Run workflow"**
+5. Leave **skip_version_bump** unchecked for a new release. Check it only to republish the current `package.json` version after a failed publish (for example `v1.1.1` is already tagged).
+6. Click **"Run workflow"**
 
 The workflow will:
 
@@ -95,10 +101,12 @@ After publishing a new version:
 
 ## Troubleshooting
 
-### "NPM_TOKEN not found"
+### "401 Unauthorized" or "404 Not Found" on publish
 
-- Ensure the GitHub secret is set correctly in repository settings
-- Token must have publish permissions
+- Confirm the Trusted Publisher matches this repo and `publish.yml`
+- Confirm **Allow npm publish** is enabled
+- Confirm the workflow does not set `NODE_AUTH_TOKEN`
+- Confirm the job uses Node 22.14+ / npm 11.5.1+ on a GitHub-hosted runner
 
 ### "Package already exists"
 
@@ -131,11 +139,7 @@ If this is the first time publishing:
    - Go to https://www.npmjs.com/settings/qastudio-dev/members
    - Invite team members with appropriate roles
 
-3. **Generate access token**:
-   - Go to https://www.npmjs.com/settings/YOUR_USERNAME/tokens
-   - Click "Generate New Token" → "Classic Token"
-   - Select "Automation" (for CI/CD)
-   - Copy the token and add to GitHub secrets
+3. **Add a Trusted Publisher** as described in Prerequisites. Do not create a classic or granular write token for CI.
 
 4. **Verify package name is available**:
    ```bash
