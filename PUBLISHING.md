@@ -13,7 +13,7 @@ This document explains how to publish new versions of the QA Studio MCP Server t
    - Workflow filename: `publish.yml`
    - Enable **Allow npm publish**
    - Leave Environment name empty
-3. **Do not set `NPM_TOKEN` / `NODE_AUTH_TOKEN` on the publish step.** A stored token overrides OIDC and fails with `E404` when it expires.
+3. **Do not set `NPM_TOKEN` / `NODE_AUTH_TOKEN`, and do not pass `registry-url` to `actions/setup-node@v4`.** That action exports a dummy `NODE_AUTH_TOKEN` which overrides OIDC and produces `E404`.
 
 ## Publishing a New Version
 
